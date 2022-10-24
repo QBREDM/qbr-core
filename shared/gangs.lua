@@ -5,11 +5,11 @@ QBShared.Gangs = {
 		grades = {
             ['0'] = {
                 name = 'Unaffiliated'
-            }
-        }
+            },
+        },
 	},
-    ['odriscoll'] = {
-		label = "O'Driscoll Boys",
+	['lostmc'] = {
+		label = 'The Lost MC',
 		grades = {
             ['0'] = {
                 name = 'Recruit'
@@ -24,10 +24,10 @@ QBShared.Gangs = {
                 name = 'Boss',
 				isboss = true
             },
-        }
+        },
 	},
-    ['lemoyne'] = {
-		label = 'Lemoyne Raiders',
+	['ballas'] = {
+		label = 'Ballas',
 		grades = {
             ['0'] = {
                 name = 'Recruit'
@@ -42,10 +42,10 @@ QBShared.Gangs = {
                 name = 'Boss',
 				isboss = true
             },
-        }
+        },
 	},
-    ['murfree'] = {
-		label = 'Murfree Brood',
+	['vagos'] = {
+		label = 'Vagos',
 		grades = {
             ['0'] = {
                 name = 'Recruit'
@@ -60,10 +60,10 @@ QBShared.Gangs = {
                 name = 'Boss',
 				isboss = true
             },
-        }
+        },
 	},
-    ['skinner'] = {
-		label = 'Skinner Brothers',
+	['cartel'] = {
+		label = 'Cartel',
 		grades = {
             ['0'] = {
                 name = 'Recruit'
@@ -78,10 +78,10 @@ QBShared.Gangs = {
                 name = 'Boss',
 				isboss = true
             },
-        }
+        },
 	},
-    ['laramie'] = {
-		label = 'Laramie Gang',
+	['families'] = {
+		label = 'Families',
 		grades = {
             ['0'] = {
                 name = 'Recruit'
@@ -96,10 +96,10 @@ QBShared.Gangs = {
                 name = 'Boss',
 				isboss = true
             },
-        }
+        },
 	},
-    ['dellobo'] = {
-		label = 'Del Lobo Gang',
+	['triads'] = {
+		label = 'Triads',
 		grades = {
             ['0'] = {
                 name = 'Recruit'
@@ -114,78 +114,6 @@ QBShared.Gangs = {
                 name = 'Boss',
 				isboss = true
             },
-        }
-	},
-    ['night'] = {
-		label = 'Night Folk',
-		grades = {
-            ['0'] = {
-                name = 'Recruit'
-            },
-			['1'] = {
-                name = 'Enforcer'
-            },
-			['2'] = {
-                name = 'Shot Caller'
-            },
-			['3'] = {
-                name = 'Boss',
-				isboss = true
-            },
-        }
-	},
-    ['foreman'] = {
-		label = 'Foreman Brothers',
-		grades = {
-            ['0'] = {
-                name = 'Recruit'
-            },
-			['1'] = {
-                name = 'Enforcer'
-            },
-			['2'] = {
-                name = 'Shot Caller'
-            },
-			['3'] = {
-                name = 'Boss',
-				isboss = true
-            },
-        }
-	},
-    ['anderson'] = {
-		label = 'Anderson Boys',
-		grades = {
-            ['0'] = {
-                name = 'Recruit'
-            },
-			['1'] = {
-                name = 'Enforcer'
-            },
-			['2'] = {
-                name = 'Shot Caller'
-            },
-			['3'] = {
-                name = 'Boss',
-				isboss = true
-            },
-        }
-	},
-    ['watson'] = {
-		label = 'Watson Boys',
-		grades = {
-            ['0'] = {
-                name = 'Recruit'
-            },
-			['1'] = {
-                name = 'Enforcer'
-            },
-			['2'] = {
-                name = 'Shot Caller'
-            },
-			['3'] = {
-                name = 'Boss',
-				isboss = true
-            },
-        }
-	},
+        },
+	}
 }

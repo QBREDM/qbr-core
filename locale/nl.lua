@@ -8,7 +8,9 @@ local Translations = {
         company_too_poor = 'Je werkgever is arm',
         item_not_exist = 'Item bestaat niet',
         too_heavy = 'Inventaris is te vol',
-        no_skill = 'Deze vaardigheid bestaat niet'
+        duplicate_license = 'Dubbele Rockstar-licentie gevonden',
+        no_valid_license  = 'Geen geldige Rockstar-licentie gevonden',
+        not_whitelisted = 'Je staat niet op de whitelist voor deze server'
     },
     success = {},
     info = {
@@ -17,14 +19,16 @@ local Translations = {
         gang_info = 'Gang: %{value} | Rang: %{value2}',
         on_duty = 'Je bent nu in dienst!',
         off_duty = 'Je bent nu uit dienst!',
-        level_info = 'Jouw level is %{value} in de vaardigheid: %{value2}',
-        xp_info = 'Je hebt %{value}xp in de vaardigheid: %{value2}',
-        xp_removed = 'Persoon is ontdaan van een beetje xp',
-        xp_added = 'Persoon heeft een beetje xp bij gekregen'
+        checking_ban = 'Hallo %s. We controleren of je verbannen bent.',
+        join_server = 'Welkom %s bij {Server Name}.',
+        checking_whitelisted = 'Hallo %s. We controleren of je op de whitelist staat.'
     }
 }
 
-Lang = Locale:new({
-    phrases = Translations,
-    warnOnMissing = true
-})
+if GetConvar('qb_locale', 'en') == 'nl' then
+    Lang = Locale:new({
+        phrases = Translations,
+        warnOnMissing = true,
+        fallbackLang = Lang,
+    })
+end

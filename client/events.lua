@@ -4,13 +4,9 @@
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
     ShutdownLoadingScreenNui()
     LocalPlayer.state:set('isLoggedIn', true, false)
-    if QBConfig.EnablePVP then
-        Citizen.InvokeNative(0xF808475FA571D823, true)
-        SetRelationshipBetweenGroups(5, `PLAYER`, `PLAYER`)
-    end
-    if QBConfig.Player.RevealMap then
-		SetMinimapHideFow(true)
-	end
+    if not QBConfig.Server.PVP then return end
+    SetCanAttackFriendly(PlayerPedId(), true, false)
+    NetworkSetFriendlyFireOption(true)
 end)
 
 RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
@@ -18,37 +14,40 @@ RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
 end)
 
 RegisterNetEvent('QBCore:Client:PvpHasToggled', function(pvp_state)
+    SetCanAttackFriendly(PlayerPedId(), pvp_state, false)
     NetworkSetFriendlyFireOption(pvp_state)
 end)
+-- Teleport Commands
 
--- QBCore Teleport Events
 RegisterNetEvent('QBCore:Command:TeleportToPlayer', function(coords)
     local ped = PlayerPedId()
-    SetEntityCoords(ped, coords.x, coords.y, coords.z)
+    SetPedCoordsKeepVehicle(ped, coords.x, coords.y, coords.z)
 end)
 
-RegisterNetEvent('QBCore:Command:TeleportToCoords', function(x, y, z)
+RegisterNetEvent('QBCore:Command:TeleportToCoords', function(x, y, z, h)
     local ped = PlayerPedId()
-    SetEntityCoords(ped, x, y, z)
+    SetPedCoordsKeepVehicle(ped, x, y, z)
+    SetEntityHeading(ped, h or GetEntityHeading(ped))
 end)
 
 RegisterNetEvent('QBCore:Command:GoToMarker', function()
     local PlayerPedId = PlayerPedId
     local GetEntityCoords = GetEntityCoords
-    local GetGroundZAndNormalFor_3dCoord = GetGroundZAndNormalFor_3dCoord
+    local GetGroundZFor_3dCoord = GetGroundZFor_3dCoord
 
-    if not IsWaypointActive() then
-        Notify(9, 'No Waypoint Set', 5000, 0, 'mp_lobby_textures', 'cross', 'COLOR_WHITE')
+    local blipMarker <const> = GetFirstBlipInfoId(8)
+    if not DoesBlipExist(blipMarker) then
+        QBCore.Functions.Notify(Lang:t("error.no_waypoint"), "error", 5000)
         return 'marker'
     end
 
-    --Fade screen to hide how clients get teleported.
+    -- Fade screen to hide how clients get teleported.
     DoScreenFadeOut(650)
     while not IsScreenFadedOut() do
         Wait(0)
     end
 
-    local ped, coords <const> = PlayerPedId(), GetWaypointCoords()
+    local ped, coords <const> = PlayerPedId(), GetBlipInfoIdCoord(blipMarker)
     local vehicle = GetVehiclePedIsIn(ped, false)
     local oldCoords <const> = GetEntityCoords(ped)
 
@@ -67,16 +66,18 @@ RegisterNetEvent('QBCore:Command:GoToMarker', function()
         if (i % 2) ~= 0 then
             z = Z_START - i
         end
-        Citizen.InvokeNative(0x387AD749E3B69B70, x, y, z, x, y, z, 50.0, 0)
+
+        NewLoadSceneStart(x, y, z, x, y, z, 50.0, 0)
         local curTime = GetGameTimer()
-        while Citizen.InvokeNative(0xCF45DF50C7775F2A) do
+        while IsNetworkLoadingScene() do
             if GetGameTimer() - curTime > 1000 then
                 break
             end
             Wait(0)
         end
-        Citizen.InvokeNative(0x5A8B01199C3E79C3)
-        SetEntityCoords(ped, x, y, z - 1000)
+        NewLoadSceneStop()
+        SetPedCoordsKeepVehicle(ped, x, y, z)
+
         while not HasCollisionLoadedAroundEntity(ped) do
             RequestCollisionAtCoord(x, y, z)
             if GetGameTimer() - curTime > 1000 then
@@ -84,12 +85,12 @@ RegisterNetEvent('QBCore:Command:GoToMarker', function()
             end
             Wait(0)
         end
+
         -- Get ground coord. As mentioned in the natives, this only works if the client is in render distance.
-        --found, groundZ = GetGroundZFor_3dCoord(x, y, z, false)
-        found, groundZ = GetGroundZAndNormalFor_3dCoord(x, y, z)
+        found, groundZ = GetGroundZFor_3dCoord(x, y, z, false);
         if found then
             Wait(0)
-            SetEntityCoords(ped, x, y, groundZ)
+            SetPedCoordsKeepVehicle(ped, x, y, groundZ)
             break
         end
         Wait(0)
@@ -106,55 +107,54 @@ RegisterNetEvent('QBCore:Command:GoToMarker', function()
     if not found then
         -- If we can't find the coords, set the coords to the old ones.
         -- We don't unpack them before since they aren't in a loop and only called once.
-        SetEntityCoords(ped, oldCoords['x'], oldCoords['y'], oldCoords['z'] - 1.0)
-        Notify(9, 'Error teleporting', 5000, 0, 'mp_lobby_textures', 'cross', 'COLOR_WHITE')
+        SetPedCoordsKeepVehicle(ped, oldCoords['x'], oldCoords['y'], oldCoords['z'] - 1.0)
+        QBCore.Functions.Notify(Lang:t("error.tp_error"), "error", 5000)
     end
 
     -- If Z coord was found, set coords in found coords.
-    SetEntityCoords(ped, x, y, groundZ)
-    Notify(9, 'Teleported', 5000, 0, 'hud_textures', 'check', 'COLOR_WHITE')
+    SetPedCoordsKeepVehicle(ped, x, y, groundZ)
+    QBCore.Functions.Notify(Lang:t("success.teleported_waypoint"), "success", 5000)
 end)
 
--- Vehicle | Horse Events
+-- Vehicle Commands
 
-RegisterNetEvent('QBCore:Command:SpawnVehicle', function(model)
-    local vehicle = exports['qbr-core']:SpawnVehicle(model)
-	TaskWarpPedIntoVehicle(PlayerPedId(), vehicle, -1)
+RegisterNetEvent('QBCore:Command:SpawnVehicle', function(vehName)
+    local ped = PlayerPedId()
+    local hash = GetHashKey(vehName)
+    local veh = GetVehiclePedIsUsing(ped)
+    if not IsModelInCdimage(hash) then return end
+    RequestModel(hash)
+    while not HasModelLoaded(hash) do
+        Wait(0)
+    end
+
+    if IsPedInAnyVehicle(ped) then
+        DeleteVehicle(veh)
+    end
+
+    local vehicle = CreateVehicle(hash, GetEntityCoords(ped), GetEntityHeading(ped), true, false)
+    TaskWarpPedIntoVehicle(ped, vehicle, -1)
+    SetVehicleFuelLevel(vehicle, 100.0)
+    SetVehicleDirtLevel(vehicle, 0.0)
+    SetModelAsNoLongerNeeded(hash)
+    TriggerEvent("vehiclekeys:client:SetOwner", QBCore.Functions.GetPlate(vehicle))
 end)
 
 RegisterNetEvent('QBCore:Command:DeleteVehicle', function()
-	local ped = PlayerPedId()
-	local vehicle = exports['qbr-core']:GetClosestVehicle()
-	if IsPedInAnyVehicle(ped) then vehicle = GetVehiclePedIsIn(ped, false) end
-    SetEntityAsMissionEntity(vehicle, true, true)
-    DeleteVehicle(vehicle)
-end)
-
-RegisterNetEvent('QBCore:Command:GetCoords', function()
     local ped = PlayerPedId()
-    local pos = GetEntityCoords(ped, false)
-    local heading = GetEntityHeading(ped)
-    AddTextEntry("FMMC_KEY_TIP12", "Coords")
-    DisplayOnscreenKeyboard(1, "FMMC_KEY_TIP12", "", vector4(pos.x, pos.y, pos.z, heading), "", "", "", 150)
-end)
-
-RegisterNetEvent('QBCore:Command:SpawnHorse', function(HorseName)
-    local ped = PlayerPedId()
-    local hash = tostring(HorseName)
-    if hash then
-        local animalHash = GetHashKey(hash)
-        if not IsModelValid(animalHash) then return end
-        while not HasModelLoaded(animalHash) do Wait(100) end
-		local x, y, z = table.unpack(GetOffsetFromEntityInWorldCoords(ped, 0.0, 4.0, 0.5))
-        local npc = CreatePed(animalHash, x, y, z, GetEntityHeading(ped) + 90, 1, 0)
-        SetRandomOutfitVariation(npc, true)
-        SetPedScale(npc, num)
-		while not IsPedReadyToRender(npc) do Wait(0) end
-		Citizen.InvokeNative(0x704C908E9C405136, npc)
-		Citizen.InvokeNative(0xAAB86462966168CE, npc, 1)
-        Wait(500)
+    local veh = GetVehiclePedIsUsing(ped)
+    if veh ~= 0 then
+        SetEntityAsMissionEntity(veh, true, true)
+        DeleteVehicle(veh)
     else
-		Notify(9, 'Model not found', 5000, 0, 'mp_lobby_textures', 'cross', 'COLOR_WHITE')
+        local pcoords = GetEntityCoords(ped)
+        local vehicles = GetGamePool('CVehicle')
+        for _, v in pairs(vehicles) do
+            if #(pcoords - GetEntityCoords(v)) <= 5.0 then
+                SetEntityAsMissionEntity(v, true, true)
+                DeleteVehicle(v)
+            end
+        end
     end
 end)
 
@@ -168,19 +168,64 @@ RegisterNetEvent('QBCore:Player:UpdatePlayerData', function()
     TriggerServerEvent('QBCore:UpdatePlayer')
 end)
 
-RegisterNetEvent('QBCore:Notify', function(id, text, duration, subtext, dict, icon, color)
-    Notify(id, text, duration, subtext, dict, icon, color)
+RegisterNetEvent('QBCore:Notify', function(text, type, length)
+    QBCore.Functions.Notify(text, type, length)
 end)
 
+-- This event is exploitable and should not be used. It has been deprecated, and will be removed soon.
 RegisterNetEvent('QBCore:Client:UseItem', function(item)
-    TriggerServerEvent('QBCore:Server:UseItem', item)
+    QBCore.Debug(string.format("%s triggered QBCore:Client:UseItem by ID %s with the following data. This event is deprecated due to exploitation, and will be removed soon. Check qb-inventory for the right use on this event.", GetInvokingResource(), GetPlayerServerId(PlayerId())))
+    QBCore.Debug(item)
 end)
 
+-- Callback Events --
+
+-- Client Callback
+RegisterNetEvent('QBCore:Client:TriggerClientCallback', function(name, ...)
+    QBCore.Functions.TriggerClientCallback(name, function(...)
+        TriggerServerEvent('QBCore:Server:TriggerClientCallback', name, ...)
+    end, ...)
+end)
+
+-- Server Callback
 RegisterNetEvent('QBCore:Client:TriggerCallback', function(name, ...)
     if QBCore.ServerCallbacks[name] then
         QBCore.ServerCallbacks[name](...)
         QBCore.ServerCallbacks[name] = nil
     end
+end)
+
+-- Me command
+
+local function Draw3DText(coords, str)
+    local onScreen, worldX, worldY = World3dToScreen2d(coords.x, coords.y, coords.z)
+    local camCoords = GetGameplayCamCoord()
+    local scale = 200 / (GetGameplayCamFov() * #(camCoords - coords))
+    if onScreen then
+        SetTextScale(1.0, 0.5 * scale)
+        SetTextFont(4)
+        SetTextColour(255, 255, 255, 255)
+        SetTextEdge(2, 0, 0, 0, 150)
+        SetTextProportional(1)
+        SetTextOutline()
+        SetTextCentre(1)
+        BeginTextCommandDisplayText("STRING")
+        AddTextComponentSubstringPlayerName(str)
+        EndTextCommandDisplayText(worldX, worldY)
+    end
+end
+
+RegisterNetEvent('QBCore:Command:ShowMe3D', function(senderId, msg)
+    local sender = GetPlayerFromServerId(senderId)
+    CreateThread(function()
+        local displayTime = 5000 + GetGameTimer()
+        while displayTime > GetGameTimer() do
+            local targetPed = GetPlayerPed(sender)
+            local tCoords = GetEntityCoords(targetPed)
+            Draw3DText(tCoords, msg)
+            Wait(0)
+        end
+    end)
 end)
 
 -- Listen to Shared being updated
